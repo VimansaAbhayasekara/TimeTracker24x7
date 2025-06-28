@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { Bar, BarChart, Line, LineChart, Pie, PieChart, Cell, XAxis, YAxis, CartesianGrid, Legend } from "recharts"
+import { Bar, BarChart, Pie, PieChart, Cell, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Button } from "@/components/ui/button"
@@ -52,33 +52,61 @@ export function DashboardCharts() {
       try {
         setLoading(true)
 
-        // Get last 6 months of data for charts
-        const endDate = new Date()
-        const startDate = new Date()
-        startDate.setMonth(startDate.getMonth() - 6)
+        // Get last week data for weekly chart
+        const weekEndDate = new Date()
+        const weekStartDate = new Date()
+        weekStartDate.setDate(weekStartDate.getDate() - 7)
 
-        const response = await fetch("/api/jira/generate-report-by-project", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            startDate: startDate.toISOString().split("T")[0],
-            endDate: endDate.toISOString().split("T")[0],
-            project: "ALL",
+        // Get last 6 months data for project distribution
+        const sixMonthsEndDate = new Date()
+        const sixMonthsStartDate = new Date()
+        sixMonthsStartDate.setMonth(sixMonthsStartDate.getMonth() - 6)
+
+        // Get last month data for monthly trends
+        const monthEndDate = new Date()
+        const monthStartDate = new Date()
+        monthStartDate.setMonth(monthStartDate.getMonth() - 1)
+
+        const [weeklyResponse, sixMonthsResponse, monthlyResponse] = await Promise.all([
+          fetch("/api/jira/generate-report-by-project", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              startDate: weekStartDate.toISOString().split("T")[0],
+              endDate: weekEndDate.toISOString().split("T")[0],
+              project: "ALL",
+            }),
           }),
-        })
+          fetch("/api/jira/generate-report-by-project", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              startDate: sixMonthsStartDate.toISOString().split("T")[0],
+              endDate: sixMonthsEndDate.toISOString().split("T")[0],
+              project: "ALL",
+            }),
+          }),
+          fetch("/api/jira/generate-report-by-project", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              startDate: monthStartDate.toISOString().split("T")[0],
+              endDate: monthEndDate.toISOString().split("T")[0],
+              project: "ALL",
+            }),
+          }),
+        ])
 
-        if (response.ok) {
-          const responseData = await response.json()
-          // Handle both paginated and direct array responses
-          const data = responseData.data || responseData
+        const weeklyData = weeklyResponse.ok ? await weeklyResponse.json() : { data: [] }
+        const sixMonthsData = sixMonthsResponse.ok ? await sixMonthsResponse.json() : { data: [] }
+        const monthlyData = monthlyResponse.ok ? await monthlyResponse.json() : { data: [] }
 
-          if (Array.isArray(data)) {
-            const processedData = processDataForCharts(data)
-            setChartData(processedData)
-          }
-        }
+        const processedData = processDataForCharts(
+          weeklyData.data || weeklyData,
+          sixMonthsData.data || sixMonthsData,
+          monthlyData.data || monthlyData,
+        )
+        setChartData(processedData)
       } catch (error) {
         console.error("Error fetching chart data:", error)
       } finally {
@@ -89,73 +117,64 @@ export function DashboardCharts() {
     fetchChartData()
   }, [])
 
-  const processDataForCharts = (data: any[]) => {
+  const processDataForCharts = (weeklyRawData: any[], sixMonthsRawData: any[], monthlyRawData: any[]) => {
     // Weekly data processing (last 7 days)
-    const weeklyMap: { [key: string]: { hours: number; projects: Set<string>; users: Set<string> } } = {}
+    const weeklyMap: { [key: string]: number } = {}
     const projectHoursMap: { [key: string]: number } = {}
-    const monthlyMap: { [key: string]: number } = {}
+    const dailyMap: { [key: string]: number } = {}
 
-    data.forEach((entry: any) => {
-      const date = new Date(entry.Date)
-      const dayName = date.toLocaleDateString("en-US", { weekday: "short" })
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+    // Process weekly data
+    if (Array.isArray(weeklyRawData)) {
+      weeklyRawData.forEach((entry: any) => {
+        const date = new Date(entry.Date)
+        const dayName = date.toLocaleDateString("en-US", { weekday: "short" })
+        const [hours, minutes] = entry.Hours.split("h")
+        const totalHours = Number.parseInt(hours) + (Number.parseInt((minutes || "").replace("m", "")) || 0) / 60
+        weeklyMap[dayName] = (weeklyMap[dayName] || 0) + totalHours
+      })
+    }
 
-      // Parse hours
-      const [hours, minutes] = entry.Hours.split("h")
-      const totalHours = Number.parseInt(hours) + (Number.parseInt((minutes || "").replace("m", "")) || 0) / 60
+    // Process 6 months data for project distribution
+    if (Array.isArray(sixMonthsRawData)) {
+      sixMonthsRawData.forEach((entry: any) => {
+        const [hours, minutes] = entry.Hours.split("h")
+        const totalHours = Number.parseInt(hours) + (Number.parseInt((minutes || "").replace("m", "")) || 0) / 60
+        projectHoursMap[entry.ProjectName] = (projectHoursMap[entry.ProjectName] || 0) + totalHours
+      })
+    }
 
-      // Weekly data (last 7 days only)
-      const today = new Date()
-      const weekAgo = new Date()
-      weekAgo.setDate(today.getDate() - 7)
-
-      if (date >= weekAgo) {
-        if (!weeklyMap[dayName]) {
-          weeklyMap[dayName] = { hours: 0, projects: new Set(), users: new Set() }
-        }
-        weeklyMap[dayName].hours += totalHours
-        weeklyMap[dayName].projects.add(entry.ProjectName)
-        weeklyMap[dayName].users.add(entry.UpdatedBy || entry.Assignee)
-      }
-
-      // Project distribution (last 6 months)
-      projectHoursMap[entry.ProjectName] = (projectHoursMap[entry.ProjectName] || 0) + totalHours
-
-      // Monthly trends (last 6 months including current)
-      monthlyMap[monthKey] = (monthlyMap[monthKey] || 0) + totalHours
-    })
+    // Process monthly data for daily trends
+    if (Array.isArray(monthlyRawData)) {
+      monthlyRawData.forEach((entry: any) => {
+        const date = new Date(entry.Date)
+        const dayKey = date.getDate().toString()
+        const [hours, minutes] = entry.Hours.split("h")
+        const totalHours = Number.parseInt(hours) + (Number.parseInt((minutes || "").replace("m", "")) || 0) / 60
+        dailyMap[dayKey] = (dailyMap[dayKey] || 0) + totalHours
+      })
+    }
 
     const weeklyData = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => ({
       day,
-      hours: Math.round((weeklyMap[day]?.hours || 0) * 100) / 100,
-      projects: weeklyMap[day]?.projects.size || 0,
-      users: weeklyMap[day]?.users.size || 0,
+      hours: Math.round((weeklyMap[day] || 0) * 100) / 100,
     }))
 
     const projectDistribution = Object.entries(projectHoursMap)
       .sort(([, a], [, b]) => b - a)
-      .slice(0, 8)
+      .slice(0, 10)
       .map(([name, value], index) => ({
         name: name.length > 15 ? name.substring(0, 15) + "..." : name,
-        value: Math.round(value),
+        value: Math.round(value * 100) / 100,
         color: CHART_COLORS[index % CHART_COLORS.length],
       }))
 
-    // Monthly trends for last 6 months including current
-    const currentDate = new Date()
-    const monthlyTrends = []
-
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1)
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
-      const monthName = date.toLocaleDateString("en-US", { month: "short" })
-
-      monthlyTrends.push({
-        month: monthName,
-        totalHours: Math.round(monthlyMap[monthKey] || 0),
-        efficiency: Math.min(95, Math.max(70, 80 + Math.random() * 15)), // Simulated efficiency
-      })
-    }
+    // Monthly trends - day by day for last month
+    const monthlyTrends = Object.entries(dailyMap)
+      .sort(([a], [b]) => Number.parseInt(a) - Number.parseInt(b))
+      .map(([day, hours]) => ({
+        day: `Day ${day}`,
+        totalHours: Math.round(hours * 100) / 100,
+      }))
 
     return { weeklyData, projectDistribution, monthlyTrends }
   }
@@ -248,7 +267,7 @@ export function DashboardCharts() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>Weekly Activity</CardTitle>
-              <CardDescription>Hours tracked this week</CardDescription>
+              <CardDescription>Hours tracked last week</CardDescription>
             </div>
             <Button variant="outline" size="sm" onClick={() => downloadChart("weekly")}>
               <Download className="w-4 h-4" />
@@ -256,29 +275,15 @@ export function DashboardCharts() {
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[300px]">
-              {activeChart === "bar" ? (
-                <BarChart data={chartData.weeklyData}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData.weeklyData} barCategoryGap="20%">
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="day" />
                   <YAxis />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Bar dataKey="hours" fill="var(--color-hours)" radius={4} />
                 </BarChart>
-              ) : (
-                <LineChart data={chartData.weeklyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line
-                    type="monotone"
-                    dataKey="hours"
-                    stroke="var(--color-hours)"
-                    strokeWidth={3}
-                    dot={{ fill: "var(--color-hours)", strokeWidth: 2, r: 4 }}
-                  />
-                </LineChart>
-              )}
+              </ResponsiveContainer>
             </ChartContainer>
           </CardContent>
         </Card>
@@ -288,7 +293,7 @@ export function DashboardCharts() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>Project Distribution</CardTitle>
-              <CardDescription>Time allocation by project type (Last 6 months)</CardDescription>
+              <CardDescription>Total worklog hours by project (Last 6 months)</CardDescription>
             </div>
             <Button variant="outline" size="sm" onClick={() => downloadChart("distribution")}>
               <Download className="w-4 h-4" />
@@ -296,40 +301,42 @@ export function DashboardCharts() {
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[300px]">
-              <PieChart>
-                <Pie
-                  data={chartData.projectDistribution}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={120}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {chartData.projectDistribution.map((entry: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <ChartTooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const data = payload[0].payload
-                      return (
-                        <div className="rounded-lg border bg-background p-2 shadow-sm">
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="flex flex-col">
-                              <span className="text-[0.70rem] uppercase text-muted-foreground">{data.name}</span>
-                              <span className="font-bold text-muted-foreground">{data.value}h</span>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={chartData.projectDistribution}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={120}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {chartData.projectDistribution.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload
+                        return (
+                          <div className="rounded-lg border bg-background p-2 shadow-sm">
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="flex flex-col">
+                                <span className="text-[0.70rem] uppercase text-muted-foreground">{data.name}</span>
+                                <span className="font-bold text-muted-foreground">{data.value}h</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      )
-                    }
-                    return null
-                  }}
-                />
-                <Legend />
-              </PieChart>
+                        )
+                      }
+                      return null
+                    }}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
             </ChartContainer>
           </CardContent>
         </Card>
@@ -339,7 +346,7 @@ export function DashboardCharts() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>Monthly Trends</CardTitle>
-              <CardDescription>Total hours over the last 6 months (including current month)</CardDescription>
+              <CardDescription>Daily total hours for last month - Interactive Bar Chart</CardDescription>
             </div>
             <Button variant="outline" size="sm" onClick={() => downloadChart("trends")}>
               <Download className="w-4 h-4" />
@@ -347,21 +354,16 @@ export function DashboardCharts() {
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[400px]">
-              <LineChart data={chartData.monthlyTrends}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="totalHours"
-                  stroke="var(--color-hours)"
-                  strokeWidth={3}
-                  name="Total Hours"
-                  dot={{ fill: "var(--color-hours)", strokeWidth: 2, r: 4 }}
-                />
-              </LineChart>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData.monthlyTrends} barCategoryGap="10%">
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="day" />
+                  <YAxis />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Legend />
+                  <Bar dataKey="totalHours" fill="var(--color-hours)" name="Total Hours" radius={4} />
+                </BarChart>
+              </ResponsiveContainer>
             </ChartContainer>
           </CardContent>
         </Card>

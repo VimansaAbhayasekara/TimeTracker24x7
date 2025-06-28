@@ -71,10 +71,10 @@ export default function Dashboard() {
 
         const [projects, users] = await Promise.all([projectsRes.json(), usersRes.json()])
 
-        // Fetch recent worklog data to calculate total hours
+        // Fetch recent worklog data to calculate total hours for last 6 months
         const endDate = new Date()
         const startDate = new Date()
-        startDate.setDate(startDate.getDate() - 30) // Last 30 days
+        startDate.setMonth(startDate.getMonth() - 6) // Last 6 months
 
         const worklogRes = await fetch("/api/jira/generate-report-by-project", {
           method: "POST",
@@ -89,18 +89,21 @@ export default function Dashboard() {
         })
 
         let totalHours = 0
+        const activeProjectsSet = new Set()
+
         if (worklogRes.ok) {
           const worklogResponse = await worklogRes.json()
           // Check if response has data property (paginated response) or is direct array
           const worklogData = worklogResponse.data || worklogResponse
 
           if (Array.isArray(worklogData)) {
-            totalHours = worklogData.reduce((sum: number, entry: any) => {
+            worklogData.forEach((entry: any) => {
               const [hours, minutes] = entry.Hours.split("h")
               const h = Number.parseInt(hours) || 0
               const m = Number.parseInt((minutes || "").replace("m", "").trim()) || 0
-              return sum + h + m / 60
-            }, 0)
+              totalHours += h + m / 60
+              activeProjectsSet.add(entry.ProjectName)
+            })
           }
         }
 
@@ -108,7 +111,7 @@ export default function Dashboard() {
           totalProjects: projects.length || 0,
           totalUsers: users.length || 0,
           totalHours: Math.round(totalHours),
-          activeProjects: projects.length || 0,
+          activeProjects: activeProjectsSet.size || 0,
         })
 
         toast({
@@ -376,6 +379,25 @@ export default function Dashboard() {
                     </Link>
                   </Button>
                 </motion.div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Footer */}
+        <motion.div initial="hidden" animate="visible" variants={containerVariants}>
+          <Card className="bg-gradient-to-r from-violet-500/10 to-purple-500/10 border-violet-200/20">
+            <CardContent className="p-6">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="text-center md:text-left">
+                  <h3 className="font-semibold text-lg">TimeTrack24X7</h3>
+                  <p className="text-sm text-muted-foreground">Professional time tracking and analytics platform</p>
+                </div>
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <span>© 2024 TimeTrack24X7</span>
+                  <span>•</span>
+                  <span>All rights reserved</span>
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -11,8 +11,7 @@ const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "TimeTrack24X7 - Professional Time Tracking",
-  description: "Advanced time tracking and analytics for JIRA and Redmine",
-    generator: 'v0.dev'
+  description: "Advanced time tracking and analytics platform for modern organizations",
 }
 
 export default function RootLayout({
@@ -23,10 +22,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <SidebarProvider>
             <AppSidebar />
-            <main className="flex-1 overflow-hidden">{children}</main>
+            <main className="flex-1 min-h-screen">{children}</main>
           </SidebarProvider>
           <Toaster />
         </ThemeProvider>

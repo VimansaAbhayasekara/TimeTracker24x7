@@ -43,7 +43,7 @@ export default function JiraTimesheetsByResource() {
   const [users, setUsers] = useState<User[]>([])
   const [selectedUser, setSelectedUser] = useState<string>("")
   const [dateRange, setDateRange] = useState<DateRange>({
-    from: new Date(new Date().setDate(new Date().getDate() - 30)),
+    from: new Date(new Date().setMonth(new Date().getMonth() - 1)),
     to: new Date(),
   })
   const [reportData, setReportData] = useState<ReportData[]>([])
@@ -54,9 +54,9 @@ export default function JiraTimesheetsByResource() {
 
   // Pagination and sorting
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(20)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
   const [sortField, setSortField] = useState<SortField>("Date")
-  const [sortOrder, setSortOrder] = useState<SortOrder>("desc")
+  const [sortOrder, setSortOrder] = useState<SortOrder>("asc")
 
   const { toast } = useToast()
 
@@ -70,6 +70,7 @@ export default function JiraTimesheetsByResource() {
       // Sort users alphabetically but keep "All Users" first
       const sortedUsers = data.sort((a: User, b: User) => a.name.localeCompare(b.name))
       setUsers([{ name: "ALL", email: "", accountId: "ALL" }, ...sortedUsers])
+      setSelectedUser("ALL")
 
       if (data.length > 0) {
         toast({
@@ -144,11 +145,17 @@ export default function JiraTimesheetsByResource() {
           variant: "destructive",
         })
       } else {
-        setReportData(data)
-        calculateTimeAnalytics(data)
+        // Sort data by date in ascending order by default
+        const sortedData = data.sort((a: ReportData, b: ReportData) => {
+          return new Date(a.Date).getTime() - new Date(b.Date).getTime()
+        })
+
+        setReportData(sortedData)
+        calculateTimeAnalytics(sortedData)
+        setCurrentPage(1)
         toast({
           title: "Success",
-          description: `Generated report with ${data.length} entries`,
+          description: `Generated report with ${sortedData.length} entries`,
         })
       }
     } catch (error) {
@@ -296,7 +303,7 @@ export default function JiraTimesheetsByResource() {
         </Breadcrumb>
       </header>
 
-      <div className="flex-1 space-y-6 p-4 md:p-6 overflow-auto max-h-screen">
+      <div className="flex-1 space-y-6 p-4 md:p-6 overflow-auto">
         {/* Hero Section */}
         <HeroSection
           title="Resource Timesheets"
@@ -326,7 +333,7 @@ export default function JiraTimesheetsByResource() {
               <CardDescription>Configure your resource timesheet report parameters</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Resource</label>
                   <Select value={selectedUser} onValueChange={setSelectedUser}>
@@ -351,21 +358,6 @@ export default function JiraTimesheetsByResource() {
                     numberOfMonths={2}
                     placeholder="Select date range"
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Items per page</label>
-                  <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="20">20</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
-                      <SelectItem value="200">200</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -516,6 +508,7 @@ export default function JiraTimesheetsByResource() {
                         </TableHead>
                         <TableHead>Assignee</TableHead>
                         <TableHead>Issue</TableHead>
+                        <TableHead>Comment</TableHead>
                         <TableHead>
                           <Button
                             variant="ghost"
@@ -538,6 +531,9 @@ export default function JiraTimesheetsByResource() {
                           <TableCell className="font-mono text-sm">{row.IssueID}</TableCell>
                           <TableCell>{row.Assignee}</TableCell>
                           <TableCell className="max-w-xs truncate">{row.Issue}</TableCell>
+                          <TableCell className="max-w-xs truncate" title={row.Comment}>
+                            {row.Comment}
+                          </TableCell>
                           <TableCell>
                             <Badge variant="secondary">{row.Hours}</Badge>
                           </TableCell>
@@ -548,31 +544,49 @@ export default function JiraTimesheetsByResource() {
                 </div>
 
                 {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between space-x-2 py-4">
-                    <div className="text-sm text-muted-foreground">
-                      Page {currentPage} of {totalPages}
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                        disabled={currentPage <= 1}
-                      >
-                        Previous
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                        disabled={currentPage >= totalPages}
-                      >
-                        Next
-                      </Button>
-                    </div>
+                <div className="flex items-center justify-between space-x-2 py-4">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-muted-foreground">Rows per page:</span>
+                    <Select
+                      value={itemsPerPage.toString()}
+                      onValueChange={(value) => {
+                        setItemsPerPage(Number(value))
+                        setCurrentPage(1)
+                      }}
+                    >
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                )}
+                  <div className="text-sm text-muted-foreground">
+                    Page {currentPage} of {totalPages}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage <= 1}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                      disabled={currentPage >= totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </motion.div>

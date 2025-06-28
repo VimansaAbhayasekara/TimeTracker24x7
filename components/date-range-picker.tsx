@@ -143,7 +143,7 @@ export const CalendarDatePicker = React.forwardRef<HTMLButtonElement, CalendarDa
       setSelectedRange(null)
       if (part === "from") {
         if (yearFrom !== undefined) {
-          if (newMonthIndex < 0 || newMonthIndex > yearsRange + 1) return
+          if (newMonthIndex < 0 || newMonthIndex > 11) return
           const newMonth = new Date(yearFrom, newMonthIndex, 1)
           const from =
             numberOfMonths === 2
@@ -165,7 +165,7 @@ export const CalendarDatePicker = React.forwardRef<HTMLButtonElement, CalendarDa
         }
       } else {
         if (yearTo !== undefined) {
-          if (newMonthIndex < 0 || newMonthIndex > yearsRange + 1) return
+          if (newMonthIndex < 0 || newMonthIndex > 11) return
           const newMonth = new Date(yearTo, newMonthIndex, 1)
           const from = date.from
             ? startOfDay(toDate(date.from, { timeZone }))
@@ -536,7 +536,8 @@ export const CalendarDatePicker = React.forwardRef<HTMLButtonElement, CalendarDa
                     <div className="flex gap-2 ml-3">
                       <Select
                         onValueChange={(value) => {
-                          handleMonthChange(months.indexOf(value), "from")
+                          const monthIndex = months.indexOf(value)
+                          handleMonthChange(monthIndex, "from")
                           setSelectedRange(null)
                         }}
                         value={monthFrom ? months[monthFrom.getMonth()] : undefined}
@@ -575,7 +576,8 @@ export const CalendarDatePicker = React.forwardRef<HTMLButtonElement, CalendarDa
                       <div className="flex gap-2">
                         <Select
                           onValueChange={(value) => {
-                            handleMonthChange(months.indexOf(value), "to")
+                            const monthIndex = months.indexOf(value)
+                            handleMonthChange(monthIndex, "to")
                             setSelectedRange(null)
                           }}
                           value={monthTo ? months[monthTo.getMonth()] : undefined}

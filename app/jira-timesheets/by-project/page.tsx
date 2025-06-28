@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Download, BarChart3, Clock, FileText, Briefcase, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react"
 import type { DateRange } from "react-day-picker"
+import { Line, LineChart, Bar, BarChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,6 +18,7 @@ import { useToast } from "@/hooks/use-toast"
 import { ProjectAnalyticsCharts } from "@/components/project-analytics-charts"
 import { CalendarDatePicker } from "@/components/date-range-picker"
 import { HeroSection } from "@/components/hero-section"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 
 interface ReportData {
   Date: string
@@ -43,7 +45,7 @@ export default function JiraTimesheetsByProject() {
   const [projects, setProjects] = useState<Project[]>([])
   const [selectedProject, setSelectedProject] = useState<string>("")
   const [dateRange, setDateRange] = useState<DateRange>({
-    from: new Date(new Date().setDate(new Date().getDate() - 30)),
+    from: new Date(new Date().setMonth(new Date().getMonth() - 1)),
     to: new Date(),
   })
   const [reportData, setReportData] = useState<ReportData[]>([])
@@ -52,12 +54,16 @@ export default function JiraTimesheetsByProject() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(20)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
   const [totalItems, setTotalItems] = useState(0)
 
   // Sorting state
   const [sortField, setSortField] = useState<SortField>("Date")
-  const [sortOrder, setSortOrder] = useState<SortOrder>("desc")
+  const [sortOrder, setSortOrder] = useState<SortOrder>("asc")
+
+  // Chart data for individual project
+  const [dailyHoursData, setDailyHoursData] = useState<any[]>([])
+  const [employeeHoursData, setEmployeeHoursData] = useState<any[]>([])
 
   const { toast } = useToast()
 
@@ -115,16 +121,15 @@ export default function JiraTimesheetsByProject() {
           startDate: formatDateSriLanka(dateRange.from),
           endDate: formatDateSriLanka(dateRange.to),
           project: selectedProject,
-          page,
-          limit: itemsPerPage,
         }),
       })
 
       if (!response.ok) throw new Error("Failed to fetch report data")
 
       const data = await response.json()
+      const allData = data.data || data
 
-      if (data.data && data.data.length === 0 && page === 1) {
+      if (allData && allData.length === 0) {
         toast({
           title: "No Data",
           description: "No worklogs found for the selected criteria",
@@ -135,22 +140,30 @@ export default function JiraTimesheetsByProject() {
         setTotalItems(0)
       } else {
         // Process data to handle "Unassigned" assignees
-        const processedData = data.data.map((item: ReportData) => ({
+        const processedData = allData.map((item: ReportData) => ({
           ...item,
           Assignee: item.Assignee === "Unassigned" ? item.UpdatedBy || "Unassigned" : item.Assignee,
         }))
 
-        setReportData(processedData)
-        setTotalItems(data.total || data.data.length)
-        setCurrentPage(page)
+        // Sort data by date in ascending order by default
+        const sortedData = processedData.sort((a: ReportData, b: ReportData) => {
+          return new Date(a.Date).getTime() - new Date(b.Date).getTime()
+        })
+
+        setReportData(sortedData)
+        setTotalItems(sortedData.length)
+        setCurrentPage(1)
         setShowCharts(true)
 
-        if (page === 1) {
-          toast({
-            title: "Success",
-            description: `Generated report with ${data.total || data.data.length} entries`,
-          })
+        // Process chart data for individual projects
+        if (selectedProject !== "ALL") {
+          processChartData(sortedData)
         }
+
+        toast({
+          title: "Success",
+          description: `Generated report with ${sortedData.length} entries`,
+        })
       }
     } catch (error) {
       toast({
@@ -161,6 +174,42 @@ export default function JiraTimesheetsByProject() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const processChartData = (data: ReportData[]) => {
+    // Daily Hours Trend
+    const dailyMap: { [key: string]: number } = {}
+    const employeeMap: { [key: string]: number } = {}
+
+    data.forEach((entry) => {
+      const [hours, minutes] = entry.Hours.split("h")
+      const totalHours = Number.parseInt(hours) + (Number.parseInt((minutes || "").replace("m", "")) || 0) / 60
+
+      // Daily hours
+      dailyMap[entry.Date] = (dailyMap[entry.Date] || 0) + totalHours
+
+      // Employee hours
+      employeeMap[entry.Assignee] = (employeeMap[entry.Assignee] || 0) + totalHours
+    })
+
+    // Convert to chart data
+    const dailyData = Object.entries(dailyMap)
+      .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
+      .map(([date, hours]) => ({
+        date: new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        hours: Math.round(hours * 100) / 100,
+      }))
+
+    const employeeData = Object.entries(employeeMap)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 10)
+      .map(([name, hours]) => ({
+        name: name.length > 15 ? name.substring(0, 15) + "..." : name,
+        hours: Math.round(hours * 100) / 100,
+      }))
+
+    setDailyHoursData(dailyData)
+    setEmployeeHoursData(employeeData)
   }
 
   const downloadReport = async () => {
@@ -225,10 +274,12 @@ export default function JiraTimesheetsByProject() {
   })
 
   const totalPages = Math.ceil(totalItems / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const paginatedData = sortedData.slice(startIndex, startIndex + itemsPerPage)
 
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
-      fetchReportData(page)
+      setCurrentPage(page)
     }
   }
 
@@ -257,7 +308,7 @@ export default function JiraTimesheetsByProject() {
         </Breadcrumb>
       </header>
 
-      <div className="flex-1 space-y-6 p-4 md:p-6 overflow-auto max-h-screen">
+      <div className="flex-1 space-y-6 p-4 md:p-6 overflow-auto">
         {/* Hero Section */}
         <HeroSection
           title="Project Timesheets"
@@ -287,7 +338,7 @@ export default function JiraTimesheetsByProject() {
               <CardDescription>Configure your timesheet report parameters</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Project</label>
                   <Select value={selectedProject} onValueChange={setSelectedProject}>
@@ -312,21 +363,6 @@ export default function JiraTimesheetsByProject() {
                     numberOfMonths={2}
                     placeholder="Select date range"
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Items per page</label>
-                  <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="20">20</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
-                      <SelectItem value="200">200</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -358,14 +394,69 @@ export default function JiraTimesheetsByProject() {
           </Card>
         </motion.div>
 
-        {/* Analytics Charts */}
+        {/* Analytics Charts for All Projects */}
         {showCharts && selectedProject === "ALL" && reportData.length > 0 && (
           <ProjectAnalyticsCharts data={reportData} />
         )}
 
+        {/* Individual Project Charts */}
+        {selectedProject !== "ALL" && reportData.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Daily Hours Trend */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Daily Hours Trend</CardTitle>
+                  <CardDescription>Hours logged per day for selected date range</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer
+                    config={{ hours: { label: "Hours", color: "hsl(var(--chart-1))" } }}
+                    className="h-[300px]"
+                  >
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={dailyHoursData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" />
+                        <YAxis />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Line type="monotone" dataKey="hours" stroke="var(--color-hours)" strokeWidth={3} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+
+              {/* Employee Hours */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Employee Total Hours</CardTitle>
+                  <CardDescription>Total hours logged by each team member</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer
+                    config={{ hours: { label: "Hours", color: "hsl(var(--chart-2))" } }}
+                    className="h-[300px]"
+                  >
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={employeeHoursData} layout="horizontal">
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" />
+                        <YAxis dataKey="name" type="category" width={100} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Bar dataKey="hours" fill="var(--color-hours)" radius={4} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+            </div>
+          </motion.div>
+        )}
+
         {/* Data Table */}
         {reportData.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -373,8 +464,7 @@ export default function JiraTimesheetsByProject() {
                   Timesheet Data
                 </CardTitle>
                 <CardDescription>
-                  Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalItems)}{" "}
-                  of {totalItems} entries
+                  Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, totalItems)} of {totalItems} entries
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -439,7 +529,7 @@ export default function JiraTimesheetsByProject() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {sortedData.map((row) => (
+                      {paginatedData.map((row) => (
                         <TableRow key={row.UniqueKey}>
                           <TableCell className="font-mono text-sm">{row.Date}</TableCell>
                           <TableCell>
@@ -465,33 +555,51 @@ export default function JiraTimesheetsByProject() {
                 </div>
 
                 {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between space-x-2 py-4">
-                    <div className="text-sm text-muted-foreground">
-                      Page {currentPage} of {totalPages}
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        disabled={currentPage <= 1 || loading}
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                        Previous
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage >= totalPages || loading}
-                      >
-                        Next
-                        <ChevronRight className="w-4 h-4" />
-                      </Button>
-                    </div>
+                <div className="flex items-center justify-between space-x-2 py-4">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-muted-foreground">Rows per page:</span>
+                    <Select
+                      value={itemsPerPage.toString()}
+                      onValueChange={(value) => {
+                        setItemsPerPage(Number(value))
+                        setCurrentPage(1)
+                      }}
+                    >
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="500">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                )}
+                  <div className="text-sm text-muted-foreground">
+                    Page {currentPage} of {totalPages}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage <= 1}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage >= totalPages}
+                    >
+                      Next
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </motion.div>

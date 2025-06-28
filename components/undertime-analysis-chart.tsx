@@ -1,6 +1,6 @@
 "use client"
 
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from "recharts"
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { motion } from "framer-motion"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -143,7 +143,6 @@ export function UndertimeAnalysisChart({ data, loading = false }: UndertimeAnaly
                       <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis
                     dataKey="formattedDate"
                     stroke="hsl(var(--muted-foreground))"
@@ -167,8 +166,7 @@ export function UndertimeAnalysisChart({ data, loading = false }: UndertimeAnaly
                     stroke="#3b82f6"
                     strokeWidth={3}
                     name="Daily Undertime Hours"
-                    dot={{ fill: "#3b82f6", strokeWidth: 2, r: 6 }}
-                    activeDot={{ r: 8, stroke: "#3b82f6", strokeWidth: 2 }}
+                    dot={false}
                     fill="url(#undertimeGradient)"
                   />
                 </LineChart>

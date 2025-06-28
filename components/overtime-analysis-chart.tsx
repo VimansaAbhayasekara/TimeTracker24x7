@@ -1,6 +1,6 @@
 "use client"
 
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from "recharts"
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { motion } from "framer-motion"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -143,7 +143,6 @@ export function OvertimeAnalysisChart({ data, loading = false }: OvertimeAnalysi
                       <stop offset="95%" stopColor="#f97316" stopOpacity={0.1} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis
                     dataKey="formattedDate"
                     stroke="hsl(var(--muted-foreground))"
@@ -167,8 +166,7 @@ export function OvertimeAnalysisChart({ data, loading = false }: OvertimeAnalysi
                     stroke="#f97316"
                     strokeWidth={3}
                     name="Daily Overtime Hours"
-                    dot={{ fill: "#f97316", strokeWidth: 2, r: 6 }}
-                    activeDot={{ r: 8, stroke: "#f97316", strokeWidth: 2 }}
+                    dot={false}
                     fill="url(#overtimeGradient)"
                   />
                 </LineChart>
