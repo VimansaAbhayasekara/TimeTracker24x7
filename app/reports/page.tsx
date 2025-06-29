@@ -254,6 +254,68 @@ export default function ReportsPage() {
     setDateRange({ from: range.from, to: range.to })
   }
 
+  const formatDate = (date: Date) =>
+  new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().split("T")[0]
+
+  const downloadProjectReport = async (start: Date, end: Date, label: string) => {
+    try {
+      const startDate = formatDate(start)
+      const endDate = formatDate(end)
+
+      const params = new URLSearchParams({
+        startDate,
+        endDate,
+        project: "ALL",
+      })
+
+      const response = await fetch(`/api/jira/generate-report-by-project?${params.toString()}`)
+      if (!response.ok) throw new Error("Failed to download report")
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `ProjectTimesheet_${label}_${startDate}_to_${endDate}.xlsx`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error("Download error:", error)
+    }
+  }
+
+  // Predefined date ranges
+  const getLastWeekRange = () => {
+    const today = new Date()
+    const dayOfWeek = today.getDay()
+    const sunday = new Date(today)
+    sunday.setDate(today.getDate() - dayOfWeek)
+    const monday = new Date(sunday)
+    monday.setDate(sunday.getDate() - 6)
+    return { from: monday, to: sunday }
+  }
+
+  const getLastMonthRange = () => {
+    const now = new Date()
+    const first = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const last = new Date(now.getFullYear(), now.getMonth(), 0)
+    return { from: first, to: last }
+  }
+
+  const getCurrentMonthRange = () => {
+    const now = new Date()
+    const first = new Date(now.getFullYear(), now.getMonth(), 1)
+    return { from: first, to: now }
+  }
+
+  const getYearToDateRange = () => {
+    const now = new Date()
+    const jan1 = new Date(now.getFullYear(), 0, 1)
+    return { from: jan1, to: now }
+  }
+
+
   return (
     <SidebarInset>
       <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
@@ -422,10 +484,8 @@ export default function ReportsPage() {
                   variant="outline"
                   className="h-auto p-4 justify-start bg-transparent"
                   onClick={() => {
-                    const endDate = new Date()
-                    const startDate = new Date()
-                    startDate.setDate(startDate.getDate() - 7)
-                    setDateRange({ from: startDate, to: endDate })
+                    const { from, to } = getLastWeekRange()
+                    downloadProjectReport(from, to, "Weekly")
                   }}
                   disabled={loading}
                 >
@@ -433,7 +493,7 @@ export default function ReportsPage() {
                     <Calendar className="w-5 h-5 text-blue-500" />
                     <div className="text-left">
                       <div className="font-semibold">Weekly Summary</div>
-                      <div className="text-sm text-muted-foreground">Last 7 days</div>
+                      <div className="text-sm text-muted-foreground">Last 7 Days</div>
                     </div>
                   </div>
                 </Button>
@@ -442,10 +502,8 @@ export default function ReportsPage() {
                   variant="outline"
                   className="h-auto p-4 justify-start bg-transparent"
                   onClick={() => {
-                    const endDate = new Date()
-                    const startDate = new Date()
-                    startDate.setMonth(startDate.getMonth() - 1)
-                    setDateRange({ from: startDate, to: endDate })
+                    const { from, to } = getLastMonthRange()
+                    downloadProjectReport(from, to, "LastMonth")
                   }}
                   disabled={loading}
                 >
@@ -453,7 +511,7 @@ export default function ReportsPage() {
                     <BarChart3 className="w-5 h-5 text-green-500" />
                     <div className="text-left">
                       <div className="font-semibold">Monthly Overview</div>
-                      <div className="text-sm text-muted-foreground">Last 30 days</div>
+                      <div className="text-sm text-muted-foreground">Last Month</div>
                     </div>
                   </div>
                 </Button>
@@ -462,18 +520,16 @@ export default function ReportsPage() {
                   variant="outline"
                   className="h-auto p-4 justify-start bg-transparent"
                   onClick={() => {
-                    const endDate = new Date()
-                    const startDate = new Date()
-                    startDate.setMonth(startDate.getMonth() - 3)
-                    setDateRange({ from: startDate, to: endDate })
+                    const { from, to } = getCurrentMonthRange()
+                    downloadProjectReport(from, to, "CurrentMonth")
                   }}
                   disabled={loading}
                 >
                   <div className="flex items-center gap-3">
                     <Users className="w-5 h-5 text-purple-500" />
                     <div className="text-left">
-                      <div className="font-semibold">Quarterly Review</div>
-                      <div className="text-sm text-muted-foreground">Last 3 months</div>
+                      <div className="font-semibold">Current Month Review</div>
+                      <div className="text-sm text-muted-foreground">Current Month</div>
                     </div>
                   </div>
                 </Button>
@@ -482,10 +538,8 @@ export default function ReportsPage() {
                   variant="outline"
                   className="h-auto p-4 justify-start bg-transparent"
                   onClick={() => {
-                    const endDate = new Date()
-                    const startDate = new Date()
-                    startDate.setFullYear(startDate.getFullYear() - 1)
-                    setDateRange({ from: startDate, to: endDate })
+                    const { from, to } = getYearToDateRange()
+                    downloadProjectReport(from, to, "YTD")
                   }}
                   disabled={loading}
                 >
@@ -493,12 +547,13 @@ export default function ReportsPage() {
                     <Clock className="w-5 h-5 text-orange-500" />
                     <div className="text-left">
                       <div className="font-semibold">Annual Report</div>
-                      <div className="text-sm text-muted-foreground">Last 12 months</div>
+                      <div className="text-sm text-muted-foreground">Current Year</div>
                     </div>
                   </div>
                 </Button>
               </div>
             </CardContent>
+
           </Card>
         </motion.div>
       </div>
