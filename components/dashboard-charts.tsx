@@ -25,18 +25,16 @@ const chartConfig = {
 }
 
 // Multiple colors for project distribution
-const CHART_COLORS = [
-  "#8b5cf6", // violet
-  "#06b6d4", // cyan
-  "#10b981", // emerald
-  "#f59e0b", // amber
-  "#ef4444", // red
-  "#3b82f6", // blue
-  "#f97316", // orange
-  "#84cc16", // lime
-  "#ec4899", // pink
-  "#6366f1", // indigo
-]
+  const CHART_COLORS = [
+    "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444",
+    "#3b82f6", "#f97316", "#84cc16", "#ec4899", "#6366f1",
+    "#14b8a6", "#a855f7", "#f43f5e", "#3b76f6", "#65a30d",
+    "#eab308", "#0ea5e9", "#db2777", "#7c3aed", "#15803d",
+    "#0284c7", "#d946ef", "#b91c1c", "#5eead4", "#0f766e",
+    "#7e22ce", "#fde047", "#3f6212", "#c084fc", "#7dd3fc",
+  ]
+
+
 
 export function DashboardCharts() {
   const [activeChart, setActiveChart] = useState<"bar" | "line" | "pie">("bar")
@@ -57,10 +55,9 @@ export function DashboardCharts() {
         const weekStartDate = new Date()
         weekStartDate.setDate(weekStartDate.getDate() - 7)
 
-        // Get last 6 months data for project distribution
-        const sixMonthsEndDate = new Date()
-        const sixMonthsStartDate = new Date()
-        sixMonthsStartDate.setMonth(sixMonthsStartDate.getMonth() - 6)
+        // Get current year data for project distribution
+        const yearStart = new Date(new Date().getFullYear(), 0, 1)
+        const today = new Date()
 
         // Get last month data for monthly trends
         const monthEndDate = new Date()
@@ -81,8 +78,8 @@ export function DashboardCharts() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              startDate: sixMonthsStartDate.toISOString().split("T")[0],
-              endDate: sixMonthsEndDate.toISOString().split("T")[0],
+              startDate: yearStart.toISOString().split("T")[0],
+              endDate: today.toISOString().split("T")[0],
               project: "ALL",
             }),
           }),
@@ -98,12 +95,12 @@ export function DashboardCharts() {
         ])
 
         const weeklyData = weeklyResponse.ok ? await weeklyResponse.json() : { data: [] }
-        const sixMonthsData = sixMonthsResponse.ok ? await sixMonthsResponse.json() : { data: [] }
+        const yearData = sixMonthsResponse.ok ? await sixMonthsResponse.json() : { data: [] }
         const monthlyData = monthlyResponse.ok ? await monthlyResponse.json() : { data: [] }
 
         const processedData = processDataForCharts(
           weeklyData.data || weeklyData,
-          sixMonthsData.data || sixMonthsData,
+          yearData.data || yearData,
           monthlyData.data || monthlyData,
         )
         setChartData(processedData)
@@ -160,13 +157,12 @@ export function DashboardCharts() {
     }))
 
     const projectDistribution = Object.entries(projectHoursMap)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 10)
-      .map(([name, value], index) => ({
-        name: name.length > 15 ? name.substring(0, 15) + "..." : name,
-        value: Math.round(value * 100) / 100,
-        color: CHART_COLORS[index % CHART_COLORS.length],
-      }))
+    .sort(([, a], [, b]) => b - a)
+    .map(([name, value], index) => ({
+      name: name.length > 15 ? name.substring(0, 15) + "..." : name,
+      value: Math.round(value * 100) / 100,
+      color: CHART_COLORS[index % CHART_COLORS.length],
+    }))
 
     // Monthly trends - day by day for last month
     const monthlyTrends = Object.entries(dailyMap)
@@ -277,7 +273,6 @@ export function DashboardCharts() {
             <ChartContainer config={chartConfig} className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData.weeklyData} barCategoryGap="20%">
-                  <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="day" />
                   <YAxis />
                   <ChartTooltip content={<ChartTooltipContent />} />
@@ -293,7 +288,10 @@ export function DashboardCharts() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>Project Distribution</CardTitle>
-              <CardDescription>Total worklog hours by project (Last 6 months)</CardDescription>
+              <CardDescription>
+                {`Annual project time allocation (${new Date().getFullYear()})`}
+              </CardDescription>
+
             </div>
             <Button variant="outline" size="sm" onClick={() => downloadChart("distribution")}>
               <Download className="w-4 h-4" />
@@ -320,12 +318,18 @@ export function DashboardCharts() {
                     content={({ active, payload }) => {
                       if (active && payload && payload.length) {
                         const data = payload[0].payload
+                        const color = data.color
+
                         return (
                           <div className="rounded-lg border bg-background p-2 shadow-sm">
                             <div className="grid grid-cols-2 gap-2">
                               <div className="flex flex-col">
-                                <span className="text-[0.70rem] uppercase text-muted-foreground">{data.name}</span>
-                                <span className="font-bold text-muted-foreground">{data.value}h</span>
+                                <span className="text-[0.70rem] uppercase text-muted-foreground">
+                                  {data.name}
+                                </span>
+                                <span className="font-bold" style={{ color }}>
+                                  {data.value}h
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -334,6 +338,7 @@ export function DashboardCharts() {
                       return null
                     }}
                   />
+
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>

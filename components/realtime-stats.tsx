@@ -11,6 +11,7 @@ interface RealtimeStatsProps {
     totalUsers: number
     totalHours: number
     activeProjects: number
+    activeUsers: number
   }
   loading?: boolean
 }
@@ -25,7 +26,7 @@ const statCards = [
   },
   {
     title: "Active Users",
-    key: "totalUsers" as const,
+    key: "activeUsers" as const,
     icon: Users,
     color: "text-green-500",
     bgColor: "bg-green-500/10",

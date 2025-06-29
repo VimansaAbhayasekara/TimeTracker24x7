@@ -25,6 +25,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/co
 import { DashboardCharts } from "@/components/dashboard-charts"
 import { RealtimeStats } from "@/components/realtime-stats"
 import { useToast } from "@/hooks/use-toast"
+import { ReportData } from "@/types"
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -53,85 +54,105 @@ export default function Dashboard() {
     totalUsers: 0,
     totalHours: 0,
     activeProjects: 0,
+    activeUsers:0,
   })
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        setLoading(true)
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
 
-        // Fetch projects and users in parallel
-        const [projectsRes, usersRes] = await Promise.all([fetch("/api/jira/projects"), fetch("/api/jira/users")])
+      // Fetch projects and users in parallel
+      const [projectsRes, usersRes] = await Promise.all([
+        fetch("/api/jira/projects"),
+        fetch("/api/jira/users")
+      ]);
 
-        if (!projectsRes.ok || !usersRes.ok) {
-          throw new Error("Failed to fetch data")
-        }
-
-        const [projects, users] = await Promise.all([projectsRes.json(), usersRes.json()])
-
-        // Fetch recent worklog data to calculate total hours for last 6 months
-        const endDate = new Date()
-        const startDate = new Date()
-        startDate.setMonth(startDate.getMonth() - 6) // Last 6 months
-
-        const worklogRes = await fetch("/api/jira/generate-report-by-project", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            startDate: startDate.toISOString().split("T")[0],
-            endDate: endDate.toISOString().split("T")[0],
-            project: "ALL",
-          }),
-        })
-
-        let totalHours = 0
-        const activeProjectsSet = new Set()
-
-        if (worklogRes.ok) {
-          const worklogResponse = await worklogRes.json()
-          // Check if response has data property (paginated response) or is direct array
-          const worklogData = worklogResponse.data || worklogResponse
-
-          if (Array.isArray(worklogData)) {
-            worklogData.forEach((entry: any) => {
-              const [hours, minutes] = entry.Hours.split("h")
-              const h = Number.parseInt(hours) || 0
-              const m = Number.parseInt((minutes || "").replace("m", "").trim()) || 0
-              totalHours += h + m / 60
-              activeProjectsSet.add(entry.ProjectName)
-            })
-          }
-        }
-
-        setStats({
-          totalProjects: projects.length || 0,
-          totalUsers: users.length || 0,
-          totalHours: Math.round(totalHours),
-          activeProjects: activeProjectsSet.size || 0,
-        })
-
-        toast({
-          title: "Dashboard Updated",
-          description: `Loaded ${projects.length} projects and ${users.length} users`,
-        })
-      } catch (error) {
-        console.error("Error fetching stats:", error)
-        toast({
-          title: "Error",
-          description: "Failed to load dashboard data",
-          variant: "destructive",
-        })
-      } finally {
-        setLoading(false)
+      if (!projectsRes.ok || !usersRes.ok) {
+        throw new Error("Failed to fetch data");
       }
-    }
 
-    fetchStats()
-  }, [toast])
+      const [projects, users] = await Promise.all([projectsRes.json(), usersRes.json()]);
+
+      // Get current year date range (Jan 1 to today)
+      const currentYear = new Date().getFullYear();
+      const startDate = new Date(currentYear, 0, 1); // January 1st of current year
+      const endDate = new Date();
+
+      // Fetch worklog data for the current year
+      const worklogRes = await fetch("/api/jira/generate-report-by-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          startDate: startDate.toISOString().split("T")[0],
+          endDate: endDate.toISOString().split("T")[0],
+          user: "ALL",
+        }),
+      });
+
+      let totalHours = 0;
+      const activeProjectsSet = new Set<string>();
+      const activeUsersSet = new Set<string>();
+
+      if (worklogRes.ok) {
+        const worklogData = await worklogRes.json();
+        
+        // Process worklog data
+        if (Array.isArray(worklogData)) {
+          worklogData.forEach((entry: any) => {
+            // Calculate total hours
+            const timeParts = entry.Hours.split('h');
+            const hours = parseInt(timeParts[0]) || 0;
+            const minutes = parseInt((timeParts[1] || '').replace('m', '').trim()) || 0;
+            totalHours += hours + (minutes / 60);
+            
+            // Track active projects and users
+            if (entry.ProjectName) activeProjectsSet.add(entry.ProjectName);
+            if (entry.Assignee) activeUsersSet.add(entry.Assignee);
+          });
+        } else if (worklogData.data && Array.isArray(worklogData.data)) {
+          worklogData.data.forEach((entry: any) => {
+            const timeParts = entry.Hours.split('h');
+            const hours = parseInt(timeParts[0]) || 0;
+            const minutes = parseInt((timeParts[1] || '').replace('m', '').trim()) || 0;
+            totalHours += hours + (minutes / 60);
+            
+            if (entry.ProjectName) activeProjectsSet.add(entry.ProjectName);
+            if (entry.Assignee) activeUsersSet.add(entry.Assignee);
+          });
+        }
+      }
+
+      setStats({
+        totalProjects: projects.length || 0,
+        totalUsers: users.length || 0,
+        totalHours: Math.round(totalHours),
+        activeProjects: activeProjectsSet.size || 0,
+        activeUsers: activeUsersSet.size || 0
+      });
+
+      toast({
+        title: "Dashboard Updated",
+        description: `Loaded ${projects.length} projects and ${users.length} users`,
+      });
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load dashboard data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchStats();
+}, [toast]);
 
   return (
     <SidebarInset>
@@ -167,7 +188,7 @@ export default function Dashboard() {
             </div>
             <h1 className="text-4xl font-bold tracking-tight mb-2">Welcome to TimeTrack24X7</h1>
             <p className="text-xl text-muted-foreground mb-6">
-              Professional time tracking and analytics for your organization
+              Professional time tracking and analytics for Zone24x7
             </p>
             <div className="flex flex-wrap gap-4">
               <Button size="lg" asChild>
