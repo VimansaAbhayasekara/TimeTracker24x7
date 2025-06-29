@@ -229,32 +229,6 @@ export function DashboardCharts() {
           <h2 className="text-xl md:text-2xl font-bold tracking-tight">Analytics Dashboard</h2>
           <p className="text-muted-foreground">Real-time insights and trends</p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant={activeChart === "bar" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveChart("bar")}
-          >
-            <BarChart3 className="w-4 h-4 mr-2" />
-            Bar
-          </Button>
-          <Button
-            variant={activeChart === "line" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveChart("line")}
-          >
-            <LineChartIcon className="w-4 h-4 mr-2" />
-            Line
-          </Button>
-          <Button
-            variant={activeChart === "pie" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveChart("pie")}
-          >
-            <PieChartIcon className="w-4 h-4 mr-2" />
-            Pie
-          </Button>
-        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -358,10 +332,9 @@ export function DashboardCharts() {
             </Button>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-[400px]">
+            <ChartContainer config={chartConfig} className="w-full h-[400px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData.monthlyTrends} barCategoryGap="10%">
-                  <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="day" />
                   <YAxis />
                   <ChartTooltip content={<ChartTooltipContent />} />
@@ -371,6 +344,7 @@ export function DashboardCharts() {
               </ResponsiveContainer>
             </ChartContainer>
           </CardContent>
+
         </Card>
       </div>
     </motion.div>

@@ -324,7 +324,7 @@ export default function JiraTimesheetsByProject() {
             text: "Resource Reports",
             href: "/jira-timesheets/by-resource",
           }}
-          backgroundGradient="from-green-500/20 via-blue-500/10 to-background"
+          backgroundGradient="from-cyan-500/20 via-violet-500/10 to-background"
         />
 
         {/* Controls */}

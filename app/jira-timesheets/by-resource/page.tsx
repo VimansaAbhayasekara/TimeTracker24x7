@@ -408,7 +408,7 @@ export default function JiraTimesheetsByResource() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-orange-500">{overtimeData.length}</div>
-                <p className="text-sm text-muted-foreground mt-1">Days with &gt;8 hours</p>
+                <p className="text-sm text-muted-foreground mt-1">Days with Overtime</p>
                 {overtimeData.length > 0 && (
                   <ScrollArea className="h-24 mt-3">
                     <div className="space-y-1">
@@ -436,7 +436,7 @@ export default function JiraTimesheetsByResource() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-blue-500">{undertimeData.length}</div>
-                <p className="text-sm text-muted-foreground mt-1">Days with &lt;8 hours</p>
+                <p className="text-sm text-muted-foreground mt-1">Days with Undertime</p>
                 {undertimeData.length > 0 && (
                   <ScrollArea className="h-24 mt-3">
                     <div className="space-y-1">
