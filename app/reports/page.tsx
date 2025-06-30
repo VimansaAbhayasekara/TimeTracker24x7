@@ -52,18 +52,6 @@ interface ReportTemplate {
 
 const reportTemplates: ReportTemplate[] = [
   {
-    id: "executive-summary",
-    title: "Executive Summary Report",
-    description:
-      "High-level overview of organizational productivity, resource utilization, and project performance metrics",
-    icon: TrendingUp,
-    color: "text-blue-500",
-    bgColor: "bg-blue-500/10",
-    audience: "CEO, Executive Team",
-    type: "organization",
-    endpoint: "/api/jira/reports/executive-summary",
-  },
-  {
     id: "project-performance",
     title: "Project Performance Report",
     description: "Detailed analysis of project timelines, resource allocation, deliverables, and budget utilization",
@@ -85,65 +73,7 @@ const reportTemplates: ReportTemplate[] = [
     audience: "HR, Team Leads",
     type: "user",
     endpoint: "/api/jira/generate-report-by-user",
-  },
-  {
-    id: "time-tracking-summary",
-    title: "Time Tracking Summary",
-    description:
-      "Comprehensive timesheet data with billable hours breakdown, project time allocation, and efficiency metrics",
-    icon: Clock,
-    color: "text-orange-500",
-    bgColor: "bg-orange-500/10",
-    audience: "Finance, Billing",
-    type: "organization",
-    endpoint: "/api/jira/generate-report-by-project",
-  },
-  {
-    id: "productivity-insights",
-    title: "Productivity Insights",
-    description:
-      "Advanced analytics on work patterns, efficiency metrics, peak performance hours, and team collaboration",
-    icon: BarChart3,
-    color: "text-indigo-500",
-    bgColor: "bg-indigo-500/10",
-    audience: "Operations, Management",
-    type: "organization",
-    endpoint: "/api/jira/generate-report-by-project",
-  },
-  {
-    id: "financial-overview",
-    title: "Financial Overview Report",
-    description: "Cost analysis, budget tracking, resource costs, and ROI metrics for projects and teams",
-    icon: DollarSign,
-    color: "text-emerald-500",
-    bgColor: "bg-emerald-500/10",
-    audience: "Finance, Accounting",
-    type: "organization",
-    endpoint: "/api/jira/generate-report-by-project",
-  },
-  {
-    id: "department-analysis",
-    title: "Department Analysis",
-    description:
-      "Cross-departmental performance comparison, resource allocation, and interdepartmental collaboration metrics",
-    icon: Building,
-    color: "text-cyan-500",
-    bgColor: "bg-cyan-500/10",
-    audience: "Department Heads",
-    type: "organization",
-    endpoint: "/api/jira/generate-report-by-project",
-  },
-  {
-    id: "individual-performance",
-    title: "Individual Performance Report",
-    description: "Personal productivity report with goals, achievements, skill development, and performance trends",
-    icon: FileText,
-    color: "text-pink-500",
-    bgColor: "bg-pink-500/10",
-    audience: "Individual Contributors",
-    type: "user",
-    endpoint: "/api/jira/generate-report-by-user",
-  },
+  }
 ]
 
 export default function ReportsPage() {
@@ -415,7 +345,7 @@ export default function ReportsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+          className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2"
         >
           {reportTemplates.map((template, index) => (
             <motion.div
@@ -547,7 +477,7 @@ export default function ReportsPage() {
                     <Clock className="w-5 h-5 text-orange-500" />
                     <div className="text-left">
                       <div className="font-semibold">Annual Report</div>
-                      <div className="text-sm text-muted-foreground">From January 1st to Today (Current Year)</div>
+                      <div className="text-sm text-muted-foreground">From January 1st to Today</div>
                     </div>
                   </div>
                 </Button>
