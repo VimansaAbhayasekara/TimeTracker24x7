@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Clock, Users, Briefcase, TrendingUp } from "lucide-react"
+import { Clock, Users, Briefcase, TrendingUp, Activity } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -41,7 +41,7 @@ const statCards = [
   {
     title: "Active Projects",
     key: "activeProjects" as const,
-    icon: TrendingUp,
+    icon: Activity,
     color: "text-orange-500",
     bgColor: "bg-orange-500/10",
   },

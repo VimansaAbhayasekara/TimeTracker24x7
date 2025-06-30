@@ -415,7 +415,7 @@ export default function Dashboard() {
                   <p className="text-sm text-muted-foreground">Professional time tracking and analytics platform</p>
                 </div>
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span>© 2024 TimeTrack24X7</span>
+                  <span>© 2025 TimeTrack24X7</span>
                   <span>•</span>
                   <span>All rights reserved</span>
                 </div>

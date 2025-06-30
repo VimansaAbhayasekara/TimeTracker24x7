@@ -10,7 +10,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "TimeTrack24X7 - Professional Time Tracking",
+  title: "TimeTrack24X7",
   description: "Advanced time tracking and analytics platform for modern organizations",
 }
 
