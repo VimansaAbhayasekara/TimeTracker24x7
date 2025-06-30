@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { Bell, Palette, Clock, Database, Shield, Download, Upload } from "lucide-react"
 
@@ -38,11 +38,20 @@ export default function SettingsPage() {
       autoBreaks: true,
     },
     integration: {
-      jiraUrl: process.env.NEXT_PUBLIC_JIRA_BASE_URL || "",
-      syncInterval: "15",
-      autoSync: true,
-    },
+    syncInterval: "1",
+    autoSync: true,    
+  },
   })
+
+   const [jiraData, setJiraData] = useState<{
+    users: any[]
+    projects: any[]
+  }>({
+    users: [],
+    projects: []
+  });
+
+  
 
   const { toast } = useToast()
 
@@ -56,8 +65,58 @@ export default function SettingsPage() {
     }))
   }
 
+  const syncJiraData = async () => {
+    try {
+      const [usersResponse, projectsResponse] = await Promise.all([
+        fetch('/api/jira/users'),
+        fetch('/api/jira/projects')
+      ]);
+
+      if (!usersResponse.ok || !projectsResponse.ok) {
+        throw new Error('One or more requests failed');
+      }
+
+      const [usersData, projectsData] = await Promise.all([
+        usersResponse.json(),
+        projectsResponse.json()
+      ]);
+
+      // Update state with the new data
+      setJiraData({
+        users: usersData,
+        projects: projectsData
+      });
+
+      toast({
+        title: "JIRA Data Synced",
+        description: "Successfully fetched latest data from JIRA",
+      });
+      
+      return { users: usersData, projects: projectsData };
+    } catch (error) {
+      toast({
+        title: "Sync Failed",
+        description: "Could not fetch data from JIRA",
+        variant: "destructive",
+      });
+      console.error("Error fetching JIRA data:", error);
+    }
+  };
+
+
+  useEffect(() => {
+    // Initial fetch
+    syncJiraData();
+
+    // Set up interval
+    const intervalId = setInterval(syncJiraData, 60000); // 1 minute
+
+    // Cleanup
+    return () => clearInterval(intervalId);
+  }, []); 
+
   const saveSettings = () => {
-    // In a real app, this would save to a backend
+
     localStorage.setItem("timetrack-settings", JSON.stringify(settings))
     toast({
       title: "Settings Saved",
@@ -330,74 +389,67 @@ export default function SettingsPage() {
         </motion.div>
 
         {/* Integration Settings */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Database className="w-5 h-5" />
-                JIRA Integration
-              </CardTitle>
-              <CardDescription>Configure your JIRA connection and sync preferences</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label>JIRA Base URL</Label>
-                <Input
-                  value={settings.integration.jiraUrl}
-                  onChange={(e) => handleSettingChange("integration", "jiraUrl", e.target.value)}
-                  placeholder="https://your-domain.atlassian.net"
-                  disabled
-                />
-                <p className="text-sm text-muted-foreground">
-                  This is configured via environment variables for security
-                </p>
-              </div>
+<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+  <Card>
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2">
+        <Database className="w-5 h-5" />
+        JIRA Integration
+      </CardTitle>
+      <CardDescription>Configure your JIRA connection and sync preferences</CardDescription>
+    </CardHeader>
+    <CardContent className="space-y-6">
+      <div className="space-y-2">
+        <Label>JIRA Base URL</Label>
+        <Input
+          value={process.env.NEXT_PUBLIC_JIRA_BASE_URL || ''}
+          onChange={(e) => handleSettingChange("integration", "jiraUrl", e.target.value)}
+          placeholder="https://your-domain.atlassian.net"
+          disabled
+        />
+        <p className="text-sm text-muted-foreground">
+        </p>
+      </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Sync Interval (minutes)</Label>
-                  <Select
-                    value={settings.integration.syncInterval}
-                    onValueChange={(value) => handleSettingChange("integration", "syncInterval", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="5">5 minutes</SelectItem>
-                      <SelectItem value="15">15 minutes</SelectItem>
-                      <SelectItem value="30">30 minutes</SelectItem>
-                      <SelectItem value="60">1 hour</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+      <div className="grid gap-10 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label>Sync Interval</Label>
+          <Select
+            value="1"
+            disabled
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">1 minute</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-                <div className="space-y-2">
-                  <Label>Connection Status</Label>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="bg-green-500/10 text-green-500">
-                      Connected
-                    </Badge>
-                    <Button variant="outline" size="sm">
-                      Test Connection
-                    </Button>
-                  </div>
-                </div>
-              </div>
+        <div className="space-y-4">
+          <Label>Connection Status</Label>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="bg-green-500/10 text-green-500">
+              Connected
+            </Badge>
+          </div>
+        </div>
+      </div>
 
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Auto Sync</Label>
-                  <p className="text-sm text-muted-foreground">Automatically sync data at specified intervals</p>
-                </div>
-                <Switch
-                  checked={settings.integration.autoSync}
-                  onCheckedChange={(checked) => handleSettingChange("integration", "autoSync", checked)}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+      <div className="flex items-center justify-between">
+        <div className="space-y-0.5">
+          <Label>Auto Sync</Label>
+          <p className="text-sm text-muted-foreground">Automatically sync data every 1 minute</p>
+        </div>
+        <Switch
+          checked={true}
+          disabled
+        />
+      </div>
+    </CardContent>
+  </Card>
+</motion.div>
 
         {/* Security Settings */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
