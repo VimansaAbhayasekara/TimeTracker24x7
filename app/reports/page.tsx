@@ -511,7 +511,7 @@ export default function ReportsPage() {
                     <BarChart3 className="w-5 h-5 text-green-500" />
                     <div className="text-left">
                       <div className="font-semibold">Monthly Overview</div>
-                      <div className="text-sm text-muted-foreground">Last Month</div>
+                      <div className="text-sm text-muted-foreground">Last 30 Days (Previous Month)</div>
                     </div>
                   </div>
                 </Button>
@@ -529,7 +529,7 @@ export default function ReportsPage() {
                     <Users className="w-5 h-5 text-purple-500" />
                     <div className="text-left">
                       <div className="font-semibold">Current Month Review</div>
-                      <div className="text-sm text-muted-foreground">Current Month</div>
+                      <div className="text-sm text-muted-foreground">Ongoing – Current Month</div>
                     </div>
                   </div>
                 </Button>
@@ -547,7 +547,7 @@ export default function ReportsPage() {
                     <Clock className="w-5 h-5 text-orange-500" />
                     <div className="text-left">
                       <div className="font-semibold">Annual Report</div>
-                      <div className="text-sm text-muted-foreground">Current Year</div>
+                      <div className="text-sm text-muted-foreground">From January 1st to Today (Current Year)</div>
                     </div>
                   </div>
                 </Button>
