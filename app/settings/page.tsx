@@ -43,15 +43,6 @@ export default function SettingsPage() {
   },
   })
 
-   const [jiraData, setJiraData] = useState<{
-    users: any[]
-    projects: any[]
-  }>({
-    users: [],
-    projects: []
-  });
-
-  
 
   const { toast } = useToast()
 
@@ -64,56 +55,6 @@ export default function SettingsPage() {
       },
     }))
   }
-
-  const syncJiraData = async () => {
-    try {
-      const [usersResponse, projectsResponse] = await Promise.all([
-        fetch('/api/jira/users'),
-        fetch('/api/jira/projects')
-      ]);
-
-      if (!usersResponse.ok || !projectsResponse.ok) {
-        throw new Error('One or more requests failed');
-      }
-
-      const [usersData, projectsData] = await Promise.all([
-        usersResponse.json(),
-        projectsResponse.json()
-      ]);
-
-      // Update state with the new data
-      setJiraData({
-        users: usersData,
-        projects: projectsData
-      });
-
-      toast({
-        title: "JIRA Data Synced",
-        description: "Successfully fetched latest data from JIRA",
-      });
-      
-      return { users: usersData, projects: projectsData };
-    } catch (error) {
-      toast({
-        title: "Sync Failed",
-        description: "Could not fetch data from JIRA",
-        variant: "destructive",
-      });
-      console.error("Error fetching JIRA data:", error);
-    }
-  };
-
-
-  useEffect(() => {
-    // Initial fetch
-    syncJiraData();
-
-    // Set up interval
-    const intervalId = setInterval(syncJiraData, 60000); // 1 minute
-
-    // Cleanup
-    return () => clearInterval(intervalId);
-  }, []); 
 
   const saveSettings = () => {
 
