@@ -158,7 +158,7 @@ export function OvertimeAnalysisChart({ data, loading = false }: OvertimeAnalysi
                     tickLine={{ stroke: "hsl(var(--border))" }}
                     tickFormatter={(value) => `${value}h`}
                   />
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip cursor={false} content={<CustomTooltip />} />
                   <Legend wrapperStyle={{ color: "hsl(var(--foreground))", fontSize: 14 }} />
                   <Line
                     type="monotone"

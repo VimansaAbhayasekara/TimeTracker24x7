@@ -18,15 +18,7 @@ interface ProjectResourceAllocationChartProps {
 
 const CHART_COLORS = [
   "#8b5cf6", // violet
-  "#06b6d4", // cyan
-  "#10b981", // emerald
-  "#f59e0b", // amber
-  "#ef4444", // red
-  "#3b82f6", // blue
-  "#f97316", // orange
-  "#84cc16", // lime
-  "#ec4899", // pink
-  "#6366f1", // indigo
+
 ]
 
 export function ProjectResourceAllocationChart({ data, loading = false }: ProjectResourceAllocationChartProps) {
@@ -113,7 +105,7 @@ export function ProjectResourceAllocationChart({ data, loading = false }: Projec
                   fontSize={12}
                   tickLine={{ stroke: "hsl(var(--border))" }}
                 />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip cursor={false} content={<CustomTooltip />} />
                 <Legend wrapperStyle={{ color: "hsl(var(--foreground))", fontSize: 14 }} />
                 <Bar dataKey="userCount" name="Active Users" radius={[4, 4, 0, 0]} minPointSize={5} />
               </BarChart>

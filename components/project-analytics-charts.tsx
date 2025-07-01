@@ -61,7 +61,6 @@ export function ProjectAnalyticsCharts({ data }: ProjectAnalyticsChartsProps) {
 
     const employeeEngagement = Object.entries(employeeEngagementMap)
       .sort(([, a], [, b]) => b - a)
-      .slice(0, 15) // Top 15 employees
       .map(([name, hours]) => ({
         name: name.length > 15 ? name.substring(0, 15) + "..." : name,
         hours: Math.round(hours * 100) / 100,

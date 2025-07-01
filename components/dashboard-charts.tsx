@@ -249,7 +249,7 @@ export function DashboardCharts() {
                 <BarChart data={chartData.weeklyData} barCategoryGap="20%">
                   <XAxis dataKey="day" />
                   <YAxis />
-                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
                   <Bar dataKey="hours" fill="var(--color-hours)" radius={4} />
                 </BarChart>
               </ResponsiveContainer>
@@ -337,7 +337,7 @@ export function DashboardCharts() {
                 <BarChart data={chartData.monthlyTrends} barCategoryGap="10%">
                   <XAxis dataKey="day" />
                   <YAxis />
-                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
                   <Legend />
                   <Bar dataKey="totalHours" fill="var(--color-hours)" name="Total Hours" radius={4} />
                 </BarChart>

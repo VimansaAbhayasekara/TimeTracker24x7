@@ -415,7 +415,7 @@ export default function JiraTimesheetsByResource() {
                       {overtimeData.map((entry, index) => (
                         <div key={index} className="flex justify-between text-xs">
                           <span>{entry.date}</span>
-                          <span className="text-orange-500 font-medium">
+                          <span className="text-orange-500 font-medium mr-2">
                             +{formatHoursAndMinutes(entry.overtimeMinutes)}
                           </span>
                         </div>
@@ -443,7 +443,7 @@ export default function JiraTimesheetsByResource() {
                       {undertimeData.map((entry, index) => (
                         <div key={index} className="flex justify-between text-xs">
                           <span>{entry.date}</span>
-                          <span className="text-blue-500 font-medium">
+                          <span className="text-blue-500 font-medium mr-2">
                             -{formatHoursAndMinutes(entry.undertimeMinutes)}
                           </span>
                         </div>

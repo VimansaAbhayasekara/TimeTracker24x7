@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Download, BarChart3, Clock, FileText, Briefcase, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react"
 import type { DateRange } from "react-day-picker"
-import { Line, LineChart, Bar, BarChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"
+import { Line, LineChart, Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -64,6 +64,7 @@ export default function JiraTimesheetsByProject() {
   // Chart data for individual project
   const [dailyHoursData, setDailyHoursData] = useState<any[]>([])
   const [employeeHoursData, setEmployeeHoursData] = useState<any[]>([])
+  const [projectHoursData, setProjectHoursData] = useState<any[]>([])
 
   const { toast } = useToast()
 
@@ -155,10 +156,8 @@ export default function JiraTimesheetsByProject() {
         setCurrentPage(1)
         setShowCharts(true)
 
-        // Process chart data for individual projects
-        if (selectedProject !== "ALL") {
-          processChartData(sortedData)
-        }
+        // Process chart data
+        processChartData(sortedData)
 
         toast({
           title: "Success",
@@ -180,6 +179,7 @@ export default function JiraTimesheetsByProject() {
     // Daily Hours Trend
     const dailyMap: { [key: string]: number } = {}
     const employeeMap: { [key: string]: number } = {}
+    const projectMap: { [key: string]: number } = {}
 
     data.forEach((entry) => {
       const [hours, minutes] = entry.Hours.split("h")
@@ -190,6 +190,11 @@ export default function JiraTimesheetsByProject() {
 
       // Employee hours
       employeeMap[entry.Assignee] = (employeeMap[entry.Assignee] || 0) + totalHours
+
+      // Project hours (only for All Projects view)
+      if (selectedProject === "ALL") {
+        projectMap[entry.ProjectName] = (projectMap[entry.ProjectName] || 0) + totalHours
+      }
     })
 
     // Convert to chart data
@@ -202,14 +207,21 @@ export default function JiraTimesheetsByProject() {
 
     const employeeData = Object.entries(employeeMap)
       .sort(([, a], [, b]) => b - a)
-      .slice(0, 10)
       .map(([name, hours]) => ({
         name: name.length > 15 ? name.substring(0, 15) + "..." : name,
         hours: Math.round(hours * 100) / 100,
       }))
 
+    const projectData = Object.entries(projectMap)
+      .sort(([, a], [, b]) => b - a)
+      .map(([name, hours]) => ({
+        name: name.length > 20 ? name.substring(0, 20) + "..." : name,
+        hours: Math.round(hours * 100) / 100,
+      }))
+
     setDailyHoursData(dailyData)
     setEmployeeHoursData(employeeData)
+    setProjectHoursData(projectData)
   }
 
   const downloadReport = async () => {
@@ -396,7 +408,84 @@ export default function JiraTimesheetsByProject() {
 
         {/* Analytics Charts for All Projects */}
         {showCharts && selectedProject === "ALL" && reportData.length > 0 && (
-          <ProjectAnalyticsCharts data={reportData} />
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Daily Hours Trend */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Daily Hours Trend</CardTitle>
+                <CardDescription>Hours logged per day across all projects</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer
+                  config={{ hours: { label: "Hours", color: "hsl(var(--chart-1))" } }}
+                  className="h-[300px]"
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={dailyHoursData}>
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip content={<ChartTooltipContent />} />
+                      <Line 
+                        type="monotone" 
+                        dataKey="hours" 
+                        stroke="hsl(var(--chart-1))" 
+                        strokeWidth={3} 
+                        dot={false} 
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+
+            {/* Project Hours */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Total Hours by Project</CardTitle>
+                <CardDescription>Hours logged per project</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart 
+                      data={projectHoursData}
+                      layout="vertical"
+                      margin={{ left: 100, right: 20 }}
+                    >
+                      <XAxis 
+                        type="number"
+                        tick={{ fill: '#6b7280' }}
+                        stroke="#6b7280"
+                      />
+                      <YAxis 
+                        dataKey="name"
+                        type="category"
+                        width={5}
+                        tick={{ fill: '#6b7280' }}
+                        stroke="#6b7280"
+                        fontSize={14}
+                      />
+                      <Tooltip 
+                        cursor={false}
+                        contentStyle={{
+                          background: 'hsl(var(--background))',
+                          borderColor: 'hsl(var(--border))',
+                          borderRadius: 'var(--radius)',
+                          
+                        }}
+                      />
+                      <Bar 
+                        dataKey="hours"
+                        fill="#8b5cf6"
+                        radius={[0, 4, 4, 0]}
+                        animationDuration={1500}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {/* Individual Project Charts */}
@@ -407,7 +496,7 @@ export default function JiraTimesheetsByProject() {
               <Card>
                 <CardHeader>
                   <CardTitle>Daily Hours Trend</CardTitle>
-                  <CardDescription>Hours logged per day for selected date range</CardDescription>
+                  <CardDescription>Hours logged per day for selected project</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ChartContainer
@@ -416,11 +505,16 @@ export default function JiraTimesheetsByProject() {
                   >
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={dailyHoursData}>
-                        <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="date" />
                         <YAxis />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Line type="monotone" dataKey="hours" stroke="var(--color-hours)" strokeWidth={3} dot={false} />
+                        <Tooltip content={<ChartTooltipContent />} />
+                        <Line 
+                          type="monotone" 
+                          dataKey="hours" 
+                          stroke="hsl(var(--chart-1))" 
+                          strokeWidth={3} 
+                          dot={false} 
+                        />
                       </LineChart>
                     </ResponsiveContainer>
                   </ChartContainer>
@@ -429,27 +523,49 @@ export default function JiraTimesheetsByProject() {
 
               {/* Employee Hours */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Employee Total Hours</CardTitle>
-                  <CardDescription>Total hours logged by each team member</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ChartContainer
-                    config={{ hours: { label: "Hours", color: "hsl(var(--chart-2))" } }}
-                    className="h-[300px]"
-                  >
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={employeeHoursData} layout="horizontal">
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis type="number" />
-                        <YAxis dataKey="name" type="category" width={100} />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Bar dataKey="hours" fill="var(--color-hours)" radius={4} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </ChartContainer>
-                </CardContent>
-              </Card>
+        <CardHeader>
+          <CardTitle>Employee Total Hours</CardTitle>
+          <CardDescription>Total hours logged by each team member</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart 
+                data={employeeHoursData}
+                layout="vertical"
+                margin={{ left: 100, right: 20 }}
+              >
+                <XAxis 
+                  type="number"
+                  tick={{ fill: '#6b7280' }}
+                  stroke="#6b7280"
+                />
+                <YAxis 
+                  dataKey="name"
+                  type="category"
+                  width={5}
+                  tick={{ fill: '#6b7280' }}
+                  stroke="#6b7280"
+                />
+                <Tooltip 
+                  cursor={false}
+                  contentStyle={{
+                    background: 'hsl(var(--background))',
+                    borderColor: 'hsl(var(--border))',
+                    borderRadius: 'var(--radius)',
+                  }}
+                />
+                <Bar 
+                  dataKey="hours"
+                  fill="#a855f7"
+                  radius={[0, 4, 4, 0]}
+                  animationDuration={1500}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
             </div>
           </motion.div>
         )}
