@@ -19,6 +19,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { cn } from "@/lib/utils"
 
 const data = {
   user: {
@@ -103,7 +104,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       </SidebarMenuButton>
                       <div className="ml-6 space-y-1">
                         {item.items.map((subItem) => (
-                          <SidebarMenuButton key={subItem.title} asChild isActive={pathname === subItem.url}>
+                          <SidebarMenuButton 
+                            key={subItem.title} 
+                            asChild 
+                            className={cn(
+                              "hover:bg-primary/10",
+                              pathname === subItem.url && "bg-primary/10 text-primary"
+                            )}
+                          >
                             <Link href={subItem.url}>
                               <span>{subItem.title}</span>
                             </Link>
@@ -112,9 +120,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       </div>
                     </div>
                   ) : (
-                    <SidebarMenuButton asChild isActive={pathname === item.url}>
+                    <SidebarMenuButton 
+                      asChild 
+                      className={cn(
+                        "hover:bg-primary/10",
+                        pathname === item.url && "bg-primary/10 text-primary"
+                      )}
+                    >
                       <Link href={item.url}>
-                        <item.icon />
+                        <item.icon className={cn(
+                          "size-4",
+                          pathname === item.url ? "text-primary" : "text-muted-foreground"
+                        )} />
                         <span>{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
