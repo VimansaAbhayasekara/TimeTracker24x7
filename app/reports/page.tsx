@@ -73,7 +73,30 @@ const reportTemplates: ReportTemplate[] = [
     audience: "HR, Team Leads",
     type: "user",
     endpoint: "/api/jira/generate-report-by-user",
-  }
+  },
+  {
+    id: "productivity-insights",
+    title: "Productivity Insights",
+    description:
+      "Advanced analytics on work patterns, efficiency metrics, peak performance hours, and team collaboration",
+    icon: BarChart3,
+    color: "text-indigo-500",
+    bgColor: "bg-indigo-500/10",
+    audience: "Operations, Management",
+    type: "organization",
+    endpoint: "/api/jira/reports/project-performance",
+  },
+  {
+    id: "individual-performance",
+    title: "Individual Performance Report",
+    description: "Personal productivity report with goals, achievements, skill development, and performance trends",
+    icon: FileText,
+    color: "text-pink-500",
+    bgColor: "bg-pink-500/10",
+    audience: "Individual Contributors",
+    type: "user",
+    endpoint: "/api/jira/reports/resource-utilization",
+  },
 ]
 
 export default function ReportsPage() {
