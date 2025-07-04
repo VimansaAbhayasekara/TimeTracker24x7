@@ -144,6 +144,7 @@ export default function JiraTimesheetsByProject() {
         const processedData = allData.map((item: ReportData) => ({
           ...item,
           Assignee: item.Assignee === "Unassigned" ? item.UpdatedBy || "Unassigned" : item.Assignee,
+          UpdatedBy: item.UpdatedBy
         }))
 
         // Sort data by date in ascending order by default
@@ -189,7 +190,8 @@ export default function JiraTimesheetsByProject() {
       dailyMap[entry.Date] = (dailyMap[entry.Date] || 0) + totalHours
 
       // Employee hours
-      employeeMap[entry.Assignee] = (employeeMap[entry.Assignee] || 0) + totalHours
+      const employeeKey = entry.UpdatedBy || entry.Assignee || "Unassigned"
+      employeeMap[employeeKey] = (employeeMap[employeeKey] || 0) + totalHours
 
       // Project hours (only for All Projects view)
       if (selectedProject === "ALL") {

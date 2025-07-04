@@ -188,7 +188,7 @@ export default function Dashboard() {
             </div>
             <h1 className="text-4xl font-bold tracking-tight mb-2">Welcome to TimeTrack24X7</h1>
             <p className="text-xl text-muted-foreground mb-6">
-              Professional time tracking and analytics for Zone24x7
+              Professional time tracking and analytics for Zone24X7
             </p>
             <div className="flex flex-wrap gap-4">
               <Button size="lg" asChild>

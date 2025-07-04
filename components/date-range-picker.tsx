@@ -112,10 +112,10 @@ export const CalendarDatePicker = React.forwardRef<HTMLButtonElement, CalendarDa
       const endDate = numberOfMonths === 2 ? endOfDay(toDate(to, { timeZone })) : startDate
       onDateSelect({ from: startDate, to: endDate })
       setSelectedRange(range)
-      setMonthFrom(from)
-      setYearFrom(from.getFullYear())
-      setMonthTo(to)
-      setYearTo(to.getFullYear())
+      setMonthFrom(startDate)
+      setYearFrom(startDate.getFullYear())
+      setMonthTo(endDate)
+      setYearTo(endDate.getFullYear())
       closeOnSelect && setIsPopoverOpen(false)
     }
 
@@ -355,6 +355,17 @@ export const CalendarDatePicker = React.forwardRef<HTMLButtonElement, CalendarDa
             .date-part {
               touch-action: none;
             }
+            .rdp-day_range_middle {
+              border-radius: 0 !important;
+            }
+            .rdp-day_range_start {
+              border-top-right-radius: 0 !important;
+              border-bottom-right-radius: 0 !important;
+            }
+            .rdp-day_range_end {
+              border-top-left-radius: 0 !important;
+              border-bottom-left-radius: 0 !important;
+            }
           `}
         </style>
         <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
@@ -577,8 +588,17 @@ export const CalendarDatePicker = React.forwardRef<HTMLButtonElement, CalendarDa
                         <Select
                           onValueChange={(value) => {
                             const monthIndex = months.indexOf(value)
-                            handleMonthChange(monthIndex, "to")
+                            const newMonth = new Date(yearTo || new Date().getFullYear(), monthIndex, 1)
+                            setMonthTo(newMonth)
+                            setYearTo(newMonth.getFullYear()) // Keep year synchronized
                             setSelectedRange(null)
+                            // Force calendar to show the selected month
+                            if (numberOfMonths === 2) {
+                              const monthsToShow = new Date(newMonth)
+                              monthsToShow.setMonth(monthsToShow.getMonth() - 1)
+                              setMonthFrom(monthsToShow)
+                              setYearFrom(monthsToShow.getFullYear()) // Keep year synchronized
+                            }
                           }}
                           value={monthTo ? months[monthTo.getMonth()] : undefined}
                         >
@@ -595,7 +615,13 @@ export const CalendarDatePicker = React.forwardRef<HTMLButtonElement, CalendarDa
                         </Select>
                         <Select
                           onValueChange={(value) => {
-                            handleYearChange(Number(value), "to")
+                            const newYear = Number(value)
+                            setYearTo(newYear)
+                            // Update monthTo with new year while keeping same month
+                            if (monthTo) {
+                              const newMonth = new Date(newYear, monthTo.getMonth(), 1)
+                              setMonthTo(newMonth)
+                            }
                             setSelectedRange(null)
                           }}
                           value={yearTo ? yearTo.toString() : undefined}
@@ -619,7 +645,14 @@ export const CalendarDatePicker = React.forwardRef<HTMLButtonElement, CalendarDa
                       mode="range"
                       defaultMonth={monthFrom}
                       month={monthFrom}
-                      onMonthChange={setMonthFrom}
+                      onMonthChange={(date) => {
+                        setMonthFrom(date)
+                        if (numberOfMonths === 2) {
+                          const nextMonth = new Date(date)
+                          nextMonth.setMonth(nextMonth.getMonth() + 1)
+                          setMonthTo(nextMonth)
+                        }
+                      }}
                       selected={date}
                       onSelect={handleDateSelect}
                       numberOfMonths={numberOfMonths}
@@ -630,19 +663,23 @@ export const CalendarDatePicker = React.forwardRef<HTMLButtonElement, CalendarDa
                           "h-9 w-9 p-0 rounded-[var(--radius)] transition-colors",
                           "hover:bg-accent hover:text-accent-foreground",
                         ),
-                        day_range_end: "rounded-r-[var(--radius)]",
+                        day_range_start: "rounded-l-full bg-violet-500 text-white hover:bg-violet-600",
+                        day_range_end: "rounded-r-full bg-violet-500 text-white hover:bg-violet-600",
                         day_selected: cn(
                           "bg-violet-500 text-white",
                           "hover:bg-violet-600 hover:text-white",
                           "focus:bg-violet-600 focus:text-white",
-                          "rounded-[var(--radius)]",
                         ),
                         day_range_middle: cn(
                           "bg-violet-100 text-violet-800",
                           "hover:bg-violet-200 hover:text-violet-900",
-                          "rounded-none",
                         ),
-                        day_today: "border border-violet-300", // Today indicator
+                        day_today: "border border-violet-300",
+                      }}
+                      styles={{
+                        day_range_middle: {
+                          borderRadius: 0,
+                        },
                       }}
                     />
                   </div>
