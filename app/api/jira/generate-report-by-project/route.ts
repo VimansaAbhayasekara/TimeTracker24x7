@@ -87,7 +87,6 @@ async function fetchAllJiraData(startDate: string, endDate: string, project: str
       throw error
     }
   } while (true)
-
   return allIssues
 }
 
@@ -150,7 +149,7 @@ function processJiraData(issues: Issue[], startDate: string, endDate: string): R
 
 // Endpoint to fetch report data as JSON with pagination
 export async function POST(req: Request) {
-  const { startDate, endDate, project, page = 1, limit = 50 } = await req.json()
+  const { startDate, endDate, project } = await req.json()
 
   if (!startDate || !endDate || !project) {
     return NextResponse.json({ error: "Missing required parameters" }, { status: 400 })
@@ -160,17 +159,9 @@ export async function POST(req: Request) {
     const issues = await fetchAllJiraData(startDate, endDate, project)
     const taskData = processJiraData(issues, startDate, endDate)
 
-    // Apply pagination
-    const startIndex = (page - 1) * limit
-    const endIndex = startIndex + limit
-    const paginatedData = taskData.slice(startIndex, endIndex)
-
     return NextResponse.json({
-      data: paginatedData,
+      data: taskData, // Return all data without pagination
       total: taskData.length,
-      page,
-      limit,
-      totalPages: Math.ceil(taskData.length / limit),
     })
   } catch (error) {
     return NextResponse.json(
